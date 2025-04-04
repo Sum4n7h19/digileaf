@@ -31,7 +31,7 @@ export default function Home() {
       MaxLon = 99.5;
     const LatDivBy = 4,
       LonDivBy = 4;
-    const LatDivDeg = 0,
+    let LatDivDeg = 0,
       LonDivDeg = 0;
 
     if (lat < MinLat || lat > MaxLat || lon < MinLon || lon > MaxLon) {
