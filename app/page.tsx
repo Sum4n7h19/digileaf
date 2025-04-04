@@ -29,9 +29,9 @@ export default function Home() {
       MaxLat = 38.5,
       MinLon = 63.5,
       MaxLon = 99.5;
-    let LatDivBy = 4,
+    const LatDivBy = 4,
       LonDivBy = 4;
-    let LatDivDeg = 0,
+    const LatDivDeg = 0,
       LonDivDeg = 0;
 
     if (lat < MinLat || lat > MaxLat || lon < MinLon || lon > MaxLon) {
