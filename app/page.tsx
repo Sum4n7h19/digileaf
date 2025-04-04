@@ -8,7 +8,7 @@ const MapWithDigipin = dynamic(() => import("../components/MapWithDigipin"), {
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-2 space-y-2">
+    <main className="min-h-screen flex flex-col items-center justify-center p-1 space-y-1">
       <center>
         <h1 className="text-2xl font-bold text-center leading-relaxed">
           Centre of Excellence in Land Administration and Management

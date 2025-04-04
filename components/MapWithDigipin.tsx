@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Dispatch, SetStateAction } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -9,7 +9,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-const Get_DIGIPIN = (lat: number, lon: number) => {
+const Get_DIGIPIN = (lat: number, lon: number): string => {
   const L = [
     ["F", "C", "9", "8"],
     ["J", "3", "2", "7"],
@@ -18,10 +18,16 @@ const Get_DIGIPIN = (lat: number, lon: number) => {
   ];
 
   let vDIGIPIN = "";
-  let row = 0, column = 0;
-  let MinLat = 2.5, MaxLat = 38.5, MinLon = 63.5, MaxLon = 99.5;
-  const LatDivBy = 4, LonDivBy = 4;
-  let LatDivDeg = 0, LonDivDeg = 0;
+  let row = 0,
+    column = 0;
+  let MinLat = 2.5,
+    MaxLat = 38.5,
+    MinLon = 63.5,
+    MaxLon = 99.5;
+  const LatDivBy = 4,
+    LonDivBy = 4;
+  let LatDivDeg = 0,
+    LonDivDeg = 0;
 
   if (lat < MinLat || lat > MaxLat || lon < MinLon || lon > MaxLon) {
     return "Out of Range";
@@ -75,7 +81,15 @@ const Get_DIGIPIN = (lat: number, lon: number) => {
   return vDIGIPIN;
 };
 
-const MapEvents = ({ setCursorLat, setCursorLon, setDigipin }: any) => {
+// Type-safe props for MapEvents
+interface MapEventsProps {
+  setCursorLat: Dispatch<SetStateAction<number | null>>;
+  setCursorLon: Dispatch<SetStateAction<number | null>>;
+  setDigipin: Dispatch<SetStateAction<string>>;
+}
+
+//Handles mouse movement on the map
+const MapEvents = ({ setCursorLat, setCursorLon, setDigipin }: MapEventsProps) => {
   useMapEvents({
     mousemove(e) {
       const lat = e.latlng.lat;
@@ -85,11 +99,13 @@ const MapEvents = ({ setCursorLat, setCursorLon, setDigipin }: any) => {
       setDigipin(Get_DIGIPIN(lat, lon));
     },
   });
+
   return null;
 };
 
+//Main map component
 export default function MapWithDigipin() {
-  const [digipin, setDigipin] = useState("");
+  const [digipin, setDigipin] = useState<string>("");
   const [cursorLat, setCursorLat] = useState<number | null>(null);
   const [cursorLon, setCursorLon] = useState<number | null>(null);
 
@@ -127,6 +143,7 @@ export default function MapWithDigipin() {
               />
             </LayersControl.BaseLayer>
           </LayersControl>
+
           <MapEvents
             setCursorLat={setCursorLat}
             setCursorLon={setCursorLon}
@@ -139,8 +156,8 @@ export default function MapWithDigipin() {
         {cursorLat && cursorLon ? (
           <>
             <p>
-              <strong>Lat:</strong> {cursorLat.toFixed(6)} |{" "}
-              <strong>Lon:</strong> {cursorLon.toFixed(6)}
+              <strong>Lat:</strong> {cursorLat.toFixed(6)} | <strong>Lon:</strong>{" "}
+              {cursorLon.toFixed(6)}
             </p>
             <p>
               <strong>DIGIPIN:</strong> {digipin}
