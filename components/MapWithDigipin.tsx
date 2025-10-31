@@ -311,7 +311,7 @@ export default function MapWithDigipinPlusCode() {
         const mod = await import("h3-js");
         // Log module keys so you can inspect them in the browser console
         // eslint-disable-next-line no-console
-        console.info("h3-js module keys:", Object.keys(mod));
+        //console.info("h3-js module keys:", Object.keys(mod));
 
         // Type hack: treat as any for probing
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -349,7 +349,7 @@ export default function MapWithDigipinPlusCode() {
             if (typeof val === "function" && /geo.*h3|h3.*geo|lat.*lng/i.test(k)) {
               fn = val;
               // eslint-disable-next-line no-console
-              console.info("Selected h3 function by key:", k);
+             // console.info("Selected h3 function by key:", k);
               break;
             }
           }
@@ -359,15 +359,15 @@ export default function MapWithDigipinPlusCode() {
           // Wrap into consistent signature (lat, lon, res)
           setGeoToH3(() => (lat: number, lon: number, res: number) => fn(lat, lon, res));
           // eslint-disable-next-line no-console
-          console.info("h3-js: geoToH3 function bound successfully");
+          //console.info("h3-js: geoToH3 function bound successfully");
         } else {
           // eslint-disable-next-line no-console
-          console.warn("h3-js loaded but no suitable geoToH3-like function was found. Module keys:", Object.keys(mod));
+          //console.warn("h3-js loaded but no suitable geoToH3-like function was found. Module keys:", Object.keys(mod));
           setGeoToH3(null);
         }
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn("h3-js could not be loaded at runtime:", e);
+        //console.warn("h3-js could not be loaded at runtime:", e);
         setGeoToH3(null);
       }
     })();
@@ -416,7 +416,7 @@ export default function MapWithDigipinPlusCode() {
               &nbsp;&nbsp;&nbsp;
               Plus Code: {plusCode}
               &nbsp;&nbsp;&nbsp;
-              H3 (res 15): {h3Index}
+              Uber H3: {h3Index}
               </p>
             
     
