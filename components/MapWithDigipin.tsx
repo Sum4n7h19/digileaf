@@ -382,11 +382,11 @@ export default function MapWithDigipinPlusCode() {
             };
           });
         } else {
-          setGeoToH3(null);
+          setGeoToH3(undefined);
         }
       } catch {
         // catch without variable avoids "defined but never used" eslint error
-        setGeoToH3(null);
+        setGeoToH3(undefined);
       }
     })();
 
