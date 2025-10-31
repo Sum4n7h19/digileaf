@@ -363,9 +363,9 @@ export default function MapWithDigipinPlusCode() {
             <p>
               <strong>Lat:</strong> {cursorLat.toFixed(6)} | <strong>Lon:</strong> {cursorLon.toFixed(6)}
             </p>
-            <p className="mt-2 font-semibold">DIGIPIN: {digipin}</p>
-            <p className="mt-1 font-semibold">Plus Code: {plusCode}</p>
-            <p className="mt-1 font-semibold">ULPIN: {ulpin}</p>
+            <p className="mt-2 font-semibold">ULPIN: {ulpin}&nbsp;&nbsp;
+              DIGIPIN: {digipin} &nbsp;&nbsp;Plus Code: {plusCode}</p>
+            
           </>
         ) : (
           <p>Move your mouse over the map...</p>
