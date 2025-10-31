@@ -9,7 +9,12 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-/* ---------- Plus Code encoder (standalone) ---------- */
+// ---------- Improved H3 dynamic import detection ----------
+// Some bundlers / versions expose h3-js differently. This code probes
+// the imported module for plausible function names and shapes and logs
+// the module keys to the console to help debugging.
+
+// ---------- Plus Code / DIGIPIN / ULPIN helpers (unchanged) ----------
 const SEPARATOR = "+";
 const SEPARATOR_POSITION = 8;
 const PADDING_CHARACTER = "0";
@@ -94,7 +99,6 @@ export function encodeOpenLocationCode(lat: number, lon: number, codeLength = PA
   return code;
 }
 
-/* ---------- DIGIPIN algorithm ---------- */
 const Get_DIGIPIN = (lat: number, lon: number): string => {
   const L = [
     ["F", "C", "9", "8"],
@@ -167,38 +171,28 @@ const Get_DIGIPIN = (lat: number, lon: number): string => {
   return vDIGIPIN;
 };
 
-/* ---------- ULPIN algorithm (ported from Python) ---------- */
 function ulpinTS(lat: number, lon: number, floor: number): string {
-  // base sets from python function
   const base14 = "0123456789ABCD";
   const base19 = "0123456789ABCDEFGHI";
   const base32 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-  // integer and fractional parts (using truncation like Python int())
   const latInt = Math.trunc(lat);
-  const latFrac = Math.abs(lat - latInt); // use absolute fractional part for digit extraction
+  const latFrac = Math.abs(lat - latInt);
 
-  // lat1: 90 + int(int_part)
   const lat1 = 90 + latInt;
   const lat1_floor = Math.floor(lat1 / 14);
   const lat1_modu = lat1 % 14;
   const lat1_14 = base14.charAt(lat1_floor) + base14.charAt(lat1_modu);
 
-  // Get fractional digits as string with enough precision
-  // ensure we have at least 8 fractional digits
-  let latFracStr = latFrac.toFixed(8); // e.g. "0.12345678"
-  // remove leading "0."
+  let latFracStr = latFrac.toFixed(8);
   if (latFracStr.startsWith("0.")) latFracStr = latFracStr.slice(2);
-  // pad if too short
   latFracStr = (latFracStr + "00000000").slice(0, 8);
 
-  // lat2: digits 0..2 (original Python used [2:5] skipping "0.")
   const lat2 = parseInt(latFracStr.slice(0, 3), 10);
   const lat2_floor = Math.floor(lat2 / 32);
   const lat2_modu = lat2 % 32;
   const lat3_32 = base32.charAt(lat2_floor) + base32.charAt(lat2_modu);
 
-  // lat4: next three digits
   const lat4 = parseInt(latFracStr.slice(3, 6), 10);
   const lat4_floor = Math.floor(lat4 / 32);
   const lat4_modu = lat4 % 32;
@@ -206,7 +200,6 @@ function ulpinTS(lat: number, lon: number, floor: number): string {
 
   const latitude = lat1_14 + lat3_32 + lat4_32;
 
-  // longitude
   const lonInt = Math.trunc(lon);
   const lonFrac = Math.abs(lon - lonInt);
 
@@ -229,7 +222,6 @@ function ulpinTS(lat: number, lon: number, floor: number): string {
   const lon4_modu = lon4 % 32;
   const lon4_32 = base32.charAt(lon4_floor) + base32.charAt(lon4_modu);
 
-  // floor mapping
   const f1 = floor + 544;
   const f1_floor = Math.floor(f1 / 32);
   const f1_modu = f1 % 32;
@@ -239,7 +231,6 @@ function ulpinTS(lat: number, lon: number, floor: number): string {
 
   let ulpin = latitude + longitude;
 
-  // replace I and O with Y and Z
   if (ulpin.includes("I") || ulpin.includes("O")) {
     ulpin = ulpin.replace(/I/g, "Y").replace(/O/g, "Z");
   }
@@ -247,16 +238,18 @@ function ulpinTS(lat: number, lon: number, floor: number): string {
   return ulpin;
 }
 
-/* ---------- Map interaction ---------- */
+// ---------- Map interaction & robust H3 detection ----------
 interface MapEventsProps {
   setCursorLat: Dispatch<SetStateAction<number | null>>;
   setCursorLon: Dispatch<SetStateAction<number | null>>;
   setDigipin: Dispatch<SetStateAction<string>>;
   setPlusCode: Dispatch<SetStateAction<string>>;
   setULPIN: Dispatch<SetStateAction<string>>;
+  setH3Index: Dispatch<SetStateAction<string>>;
+  geoToH3?: (lat: number, lon: number, res: number) => string | null;
 }
 
-const MapEvents = ({ setCursorLat, setCursorLon, setDigipin, setPlusCode, setULPIN }: MapEventsProps) => {
+const MapEvents = ({ setCursorLat, setCursorLon, setDigipin, setPlusCode, setULPIN, setH3Index, geoToH3 }: MapEventsProps) => {
   useMapEvents({
     mousemove(e) {
       const lat = e.latlng.lat;
@@ -278,25 +271,107 @@ const MapEvents = ({ setCursorLat, setCursorLon, setDigipin, setPlusCode, setULP
         console.error(err);
         setULPIN("Error encoding ULPIN");
       }
+
+      // H3 at finest resolution (15)
+      if (geoToH3) {
+        try {
+          const h3idx = geoToH3(lat, lon, 15);
+          setH3Index(h3idx || "");
+        } catch (err) {
+          console.error(err);
+          setH3Index("Error computing H3");
+        }
+      } else {
+        setH3Index("h3-js missing or not exposing geoToH3");
+      }
     },
   });
   return null;
 };
 
-/* ---------- Main component ---------- */
+// ---------- Main component ----------
 export default function MapWithDigipinPlusCode() {
   const [digipin, setDigipin] = useState<string>("");
   const [plusCode, setPlusCode] = useState<string>("");
   const [ulpin, setULPIN] = useState<string>("");
+  const [h3Index, setH3Index] = useState<string>("");
   const [cursorLat, setCursorLat] = useState<number | null>(null);
   const [cursorLon, setCursorLon] = useState<number | null>(null);
 
   const [isClient, setIsClient] = useState(false);
   const [mapKey, setMapKey] = useState<string | null>(null);
+  const [geoToH3, setGeoToH3] = useState<((lat: number, lon: number, res: number) => string) | null>(null);
 
   useEffect(() => {
     setIsClient(true);
     setMapKey(`leaflet-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+
+    (async () => {
+      try {
+        const mod = await import("h3-js");
+        // Log module keys so you can inspect them in the browser console
+        // eslint-disable-next-line no-console
+        console.info("h3-js module keys:", Object.keys(mod));
+
+        // Type hack: treat as any for probing
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyMod: any = mod;
+
+        // Candidate function names to try
+        const candidates = [
+          anyMod.geoToH3,
+          anyMod.geo_to_h3,
+          anyMod.geoToH3?.bind(anyMod),
+          anyMod.default?.geoToH3,
+          anyMod.default?.geo_to_h3,
+          anyMod.default,
+          anyMod.latLngToCell,
+          anyMod.latlngToCell,
+          anyMod.latLngToH3,
+          anyMod.latLngToH3?.bind(anyMod),
+        ];
+
+        // Find a usable function
+        let fn: any = null;
+        for (const c of candidates) {
+          if (typeof c === "function") {
+            fn = c;
+            break;
+          }
+        }
+
+        // Special case: some builds export a namespace with the function under different names
+        if (!fn) {
+          // scan object keys for anything containing 'geo' and 'h3'
+          const keys = Object.keys(anyMod || {});
+          for (const k of keys) {
+            const val = (anyMod as any)[k];
+            if (typeof val === "function" && /geo.*h3|h3.*geo|lat.*lng/i.test(k)) {
+              fn = val;
+              // eslint-disable-next-line no-console
+              console.info("Selected h3 function by key:", k);
+              break;
+            }
+          }
+        }
+
+        if (typeof fn === "function") {
+          // Wrap into consistent signature (lat, lon, res)
+          setGeoToH3(() => (lat: number, lon: number, res: number) => fn(lat, lon, res));
+          // eslint-disable-next-line no-console
+          console.info("h3-js: geoToH3 function bound successfully");
+        } else {
+          // eslint-disable-next-line no-console
+          console.warn("h3-js loaded but no suitable geoToH3-like function was found. Module keys:", Object.keys(mod));
+          setGeoToH3(null);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("h3-js could not be loaded at runtime:", e);
+        setGeoToH3(null);
+      }
+    })();
+
     return () => setMapKey(null);
   }, []);
 
@@ -305,52 +380,25 @@ export default function MapWithDigipinPlusCode() {
 
   return (
     <div className="p-4">
-      <div
-        className="border shadow rounded mx-auto"
-        style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px` }}
-      >
+      <div className="border shadow rounded mx-auto" style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px` }}>
         {isClient && mapKey ? (
-          <MapContainer
-            key={mapKey}
-            center={[12.9716, 77.5946]}
-            zoom={6}
-            style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px` }}
-            scrollWheelZoom={true}
-          >
+          <MapContainer key={mapKey} center={[12.9716, 77.5946]} zoom={6} style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px` }} scrollWheelZoom={true}>
             <LayersControl position="topright">
               <LayersControl.BaseLayer checked name="OpenStreetMap">
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution="&copy; OpenStreetMap contributors"
-                />
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
               </LayersControl.BaseLayer>
               <LayersControl.BaseLayer name="Carto Light">
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                  attribution="&copy; CartoDB"
-                />
+                <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; CartoDB" />
               </LayersControl.BaseLayer>
               <LayersControl.BaseLayer name="Carto Dark">
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  attribution="&copy; CartoDB"
-                />
+                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="&copy; CartoDB" />
               </LayersControl.BaseLayer>
               <LayersControl.BaseLayer name="ESRI Satellite">
-                <TileLayer
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  attribution="Tiles &copy; Esri"
-                />
+                <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="Tiles &copy; Esri" />
               </LayersControl.BaseLayer>
             </LayersControl>
 
-            <MapEvents
-              setCursorLat={setCursorLat}
-              setCursorLon={setCursorLon}
-              setDigipin={setDigipin}
-              setPlusCode={setPlusCode}
-              setULPIN={setULPIN}
-            />
+            <MapEvents setCursorLat={setCursorLat} setCursorLon={setCursorLon} setDigipin={setDigipin} setPlusCode={setPlusCode} setULPIN={setULPIN} setH3Index={setH3Index} geoToH3={geoToH3} />
           </MapContainer>
         ) : (
           <div style={{ width: "100%", height: "100%" }} />
@@ -363,9 +411,15 @@ export default function MapWithDigipinPlusCode() {
             <p>
               <strong>Lat:</strong> {cursorLat.toFixed(6)} | <strong>Lon:</strong> {cursorLon.toFixed(6)}
             </p>
-            <p className="mt-2 font-semibold">ULPIN: {ulpin}&nbsp;&nbsp;
-              DIGIPIN: {digipin} &nbsp;&nbsp;Plus Code: {plusCode}</p>
+            <p className="mt-2 font-semibold">ULPIN: {ulpin} &nbsp;&nbsp; &nbsp;
+              DIGIPIN: {digipin}
+              &nbsp;&nbsp;&nbsp;
+              Plus Code: {plusCode}
+              &nbsp;&nbsp;&nbsp;
+              H3 (res 15): {h3Index}
+              </p>
             
+    
           </>
         ) : (
           <p>Move your mouse over the map...</p>

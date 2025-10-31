@@ -24,15 +24,14 @@ export default function Home() {
         </h1>
       </center>
 
-      <h2 className="text-l font-bold">On the Fly DigiPin Generator</h2>
+      <h2 className="text-xl font-bold">On the Fly GeoAdressing</h2>
 
       <MapWithDigipin />
 
       <footer className="text-sm text-center mt-1 w-full">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-1 px-3">
           <p>
-            Application by: Sumanth M, Centre of Excellence in Land Administration
-            and Management, ATI, Mysuru
+            Developed by: Sumanth M
           </p>
               <a
             href="https://cdnbbsr.s3waas.gov.in/s3d69116f8b0140cdeb1f99a4d5096ffe4/uploads/2024/04/20240425160100930.pdf"
@@ -57,6 +56,14 @@ export default function Home() {
             rel="noopener noreferrer"
           >
             Source: Google Pluscode Documentation
+          </a>
+                    <a
+            href="https://github.com/uber/h3"
+            className="text-blue-600 underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Source: Uber H3 Documentation
           </a>
         </div>
       </footer>
