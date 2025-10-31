@@ -24,7 +24,7 @@ export default function Home() {
         </h1>
       </center>
 
-      <h2 className="text-xl font-bold">On the Fly GeoAdressing</h2>
+      <h2 className="text-xl font-bold">Unified GeoAddressing System</h2>
 
       <MapWithDigipin />
 
