@@ -176,7 +176,7 @@ function ulpinTS(lat: number, lon: number, floor: number): string {
 
   // integer and fractional parts (using truncation like Python int())
   const latInt = Math.trunc(lat);
-  let latFrac = Math.abs(lat - latInt); // use absolute fractional part for digit extraction
+  const latFrac = Math.abs(lat - latInt); // use absolute fractional part for digit extraction
 
   // lat1: 90 + int(int_part)
   const lat1 = 90 + latInt;
@@ -208,7 +208,7 @@ function ulpinTS(lat: number, lon: number, floor: number): string {
 
   // longitude
   const lonInt = Math.trunc(lon);
-  let lonFrac = Math.abs(lon - lonInt);
+  const lonFrac = Math.abs(lon - lonInt);
 
   const lon1 = 180 + lonInt;
   const lon1_floor = Math.floor(lon1 / 19);
@@ -268,12 +268,14 @@ const MapEvents = ({ setCursorLat, setCursorLon, setDigipin, setPlusCode, setULP
         const pc = encodeOpenLocationCode(lat, lon, 10);
         setPlusCode(pc);
       } catch (err) {
+        console.error(err);
         setPlusCode("Error encoding Plus Code");
       }
       try {
         const u = ulpinTS(lat, lon, 0); // default floor = 0
         setULPIN(u);
       } catch (err) {
+        console.error(err);
         setULPIN("Error encoding ULPIN");
       }
     },
@@ -298,8 +300,8 @@ export default function MapWithDigipinPlusCode() {
     return () => setMapKey(null);
   }, []);
 
-  const MAP_WIDTH = 1200;
-  const MAP_HEIGHT = 430;
+  const MAP_WIDTH = 800;
+  const MAP_HEIGHT = 500;
 
   return (
     <div className="p-4">
@@ -361,9 +363,9 @@ export default function MapWithDigipinPlusCode() {
             <p>
               <strong>Lat:</strong> {cursorLat.toFixed(6)} | <strong>Lon:</strong> {cursorLon.toFixed(6)}
             </p>
-            <p className="mt-2 font-semibold">ULPIN: {ulpin} 
-              &nbsp;&nbsp;&nbsp;DIGIPIN: {digipin} 
-              &nbsp;&nbsp;&nbsp;Plus Code: {plusCode}</p>
+            <p className="mt-2 font-semibold">DIGIPIN: {digipin}</p>
+            <p className="mt-1 font-semibold">Plus Code: {plusCode}</p>
+            <p className="mt-1 font-semibold">ULPIN: {ulpin}</p>
           </>
         ) : (
           <p>Move your mouse over the map...</p>
