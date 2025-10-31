@@ -261,6 +261,7 @@ const MapEvents = ({ setCursorLat, setCursorLon, setDigipin, setPlusCode, setULP
         const pc = encodeOpenLocationCode(lat, lon, 10);
         setPlusCode(pc);
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(err);
         setPlusCode("Error encoding Plus Code");
       }
@@ -268,6 +269,7 @@ const MapEvents = ({ setCursorLat, setCursorLon, setDigipin, setPlusCode, setULP
         const u = ulpinTS(lat, lon, 0); // default floor = 0
         setULPIN(u);
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(err);
         setULPIN("Error encoding ULPIN");
       }
@@ -278,6 +280,7 @@ const MapEvents = ({ setCursorLat, setCursorLon, setDigipin, setPlusCode, setULP
           const h3idx = geoToH3(lat, lon, 15);
           setH3Index(h3idx || "");
         } catch (err) {
+          // eslint-disable-next-line no-console
           console.error(err);
           setH3Index("Error computing H3");
         }
@@ -309,65 +312,80 @@ export default function MapWithDigipinPlusCode() {
     (async () => {
       try {
         const mod = await import("h3-js");
-        // Log module keys so you can inspect them in the browser console
-        // eslint-disable-next-line no-console
-        //console.info("h3-js module keys:", Object.keys(mod));
 
-        // Type hack: treat as any for probing
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const anyMod: any = mod;
+        // A safe typed wrapper for probing the module
+        type PossibleFn = (...args: unknown[]) => unknown;
+        const modObj = mod as unknown as Record<string, unknown>;
 
-        // Candidate function names to try
-        const candidates = [
-          anyMod.geoToH3,
-          anyMod.geo_to_h3,
-          anyMod.geoToH3?.bind(anyMod),
-          anyMod.default?.geoToH3,
-          anyMod.default?.geo_to_h3,
-          anyMod.default,
-          anyMod.latLngToCell,
-          anyMod.latlngToCell,
-          anyMod.latLngToH3,
-          anyMod.latLngToH3?.bind(anyMod),
+        // Candidate getters we try (accessed via keys to avoid 'any')
+        const candidateNames = [
+          "geoToH3",
+          "geo_to_h3",
+          "default",
+          "latLngToCell",
+          "latlngToCell",
+          "latLngToH3",
+          "latlngToH3",
         ];
 
-        // Find a usable function
-        let fn: any = null;
-        for (const c of candidates) {
-          if (typeof c === "function") {
-            fn = c;
-            break;
+        // Helper: returns a function if the property exists and is a function.
+        const getFnIfAvailable = (obj: Record<string, unknown>, key: string): PossibleFn | null => {
+          const val = obj[key];
+          if (typeof val === "function") return val as PossibleFn;
+          // If 'default' is an object with the function inside, try that too:
+          if (key === "default" && typeof val === "object" && val !== null) {
+            const nested = val as Record<string, unknown>;
+            for (const nestedKey of Object.keys(nested)) {
+              const nestedVal = nested[nestedKey];
+              if (typeof nestedVal === "function") return nestedVal as PossibleFn;
+            }
           }
+          return null;
+        };
+
+        // First try direct known names
+        let fn: PossibleFn | null = null;
+        for (const name of candidateNames) {
+          fn = getFnIfAvailable(modObj, name);
+          if (fn) break;
         }
 
-        // Special case: some builds export a namespace with the function under different names
+        // If still not found, scan all keys to find something that looks right
         if (!fn) {
-          // scan object keys for anything containing 'geo' and 'h3'
-          const keys = Object.keys(anyMod || {});
-          for (const k of keys) {
-            const val = (anyMod as any)[k];
-            if (typeof val === "function" && /geo.*h3|h3.*geo|lat.*lng/i.test(k)) {
-              fn = val;
-              // eslint-disable-next-line no-console
-             // console.info("Selected h3 function by key:", k);
+          for (const k of Object.keys(modObj)) {
+            const v = modObj[k];
+            if (typeof v === "function" && /geo.*h3|h3.*geo|lat.*lng/i.test(k)) {
+              fn = v as PossibleFn;
               break;
+            }
+            // Also check inside default if it's an object
+            if (k === "default" && typeof v === "object" && v !== null) {
+              const nested = v as Record<string, unknown>;
+              for (const nk of Object.keys(nested)) {
+                const nv = nested[nk];
+                if (typeof nv === "function" && /geo.*h3|h3.*geo|lat.*lng/i.test(nk)) {
+                  fn = nv as PossibleFn;
+                  break;
+                }
+              }
+              if (fn) break;
             }
           }
         }
 
         if (typeof fn === "function") {
-          // Wrap into consistent signature (lat, lon, res)
-          setGeoToH3(() => (lat: number, lon: number, res: number) => fn(lat, lon, res));
-          // eslint-disable-next-line no-console
-          //console.info("h3-js: geoToH3 function bound successfully");
+          // Normalize to the (lat, lon, res) => string signature
+          setGeoToH3(() => {
+            return (lat: number, lon: number, res: number) => {
+              const out = (fn as PossibleFn)(lat, lon, res);
+              return (typeof out === "string" ? out : String(out)) as string;
+            };
+          });
         } else {
-          // eslint-disable-next-line no-console
-          //console.warn("h3-js loaded but no suitable geoToH3-like function was found. Module keys:", Object.keys(mod));
           setGeoToH3(null);
         }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        //console.warn("h3-js could not be loaded at runtime:", e);
+      } catch {
+        // catch without variable avoids "defined but never used" eslint error
         setGeoToH3(null);
       }
     })();
