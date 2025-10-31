@@ -303,7 +303,7 @@ export default function MapWithDigipinPlusCode() {
 
   const [isClient, setIsClient] = useState(false);
   const [mapKey, setMapKey] = useState<string | null>(null);
-  const [geoToH3, setGeoToH3] = useState<((lat: number, lon: number, res: number) => string) | null>(null);
+  const [geoToH3, setGeoToH3] = useState<((lat: number, lon: number, res: number) => string | null) | undefined>(undefined);
 
   useEffect(() => {
     setIsClient(true);
